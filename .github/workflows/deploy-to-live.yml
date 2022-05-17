@@ -1,0 +1,41 @@
+name: first-github-action
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+    deploy-to-live:
+      name: Deploy to live
+      runs-on: ubuntu-latest
+      steps:
+
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Get files
+        run: git checkout main
+      
+      - name: Install npm files
+        run: npm install
+
+      - name: Build app
+        run: npm run build
+
+      - name: Install SSH key to workflow
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${ secrets.SSH_KNOWN_HOST }}
+      
+      - name: Add key to known_hosts
+        run: ssh-keyscan -H -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy via rsync
+        run: rsync -avz --delete -e "ssh -p ${{ secrets.SSH_PORT }}" ./build/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DROPLET_BUILD_DIR }}/
+
+
+        
