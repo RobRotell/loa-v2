@@ -21,11 +21,12 @@
 			:tags="tags"
 		/>
 
-		<!-- <Meta
-			:total_to_read="meta.articles.totalCount"
+		<Meta
+			:total_to_read="meta.articles.totalUnread"
 			:total_read="meta.articles.totalRead"
 			:tags="tags"
-		/> -->
+			@selected_tag_filter="handleSelectTagFilter"
+		/>
 
 		<ArticleList
 			@fetch_next_page="fetchNextPageArticles"
@@ -47,13 +48,9 @@
 		box-sizing: border-box;
 	}
 
-	html {
-		overflow-y: scroll;
-	}
-
 	html,
 	body {
-		height: 100%;
+		min-height: 100vh;
 		color: $grayText;
 		text-rendering: optimizeLegibility;
 		text-rendering: geometricPrecision;
@@ -120,7 +117,7 @@
 	import Signin from './components/Signin.vue'
 	import Status from './components/Status.vue'
 	import Form from './components/Form.vue'
-	// import Meta from './components/Meta.vue'
+	import Meta from './components/Meta.vue'
 	import ArticleList from './components/ArticleList.vue'
 
 	import Articles from './data/Articles.mjs'
@@ -139,7 +136,7 @@
 		components: {
 			ArticleList,
 			Form,
-			// Meta,
+			Meta,
 			Signin,
 			Status,
 		},
@@ -147,8 +144,9 @@
 
 		data() {
 			return {
-				articles:	new Map(),
-				tags: 		new Map(),
+				articles:		new Map(),
+				articlesMain: 	new Map(), // used for filtering
+				tags: 			new Map(),
 
 				status: {
 					message: 	'',
@@ -159,8 +157,9 @@
 
 				meta: {
 					articles: {
-						totalCount:	0,
-						totalRead: 	0,
+						totalCount:		0,
+						totalRead: 		0,
+						totalUnread:	0,
 					},
 					pages: {
 						perPage:	25,
@@ -174,6 +173,7 @@
 					isLoadingArticles:	false,
 					hasSaved: 			false,
 					userIsLoggedIn: 	false,
+					canFetchNextPage: 	true,
 				},
 
 				user: {
@@ -185,13 +185,6 @@
 
 
 		computed: {
-			articlesToRead() {
-				return this.meta.articles.totalCount - this.meta.articles.totalRead
-			},
-
-			visibleArticlesCount() {
-				return this.articles.size
-			},
 		},
 
 
@@ -352,12 +345,14 @@
 					
 					// update article count
 					).then( data => {
-						this.meta.articles.totalCount = data.meta.total_articles
-						this.meta.articles.totalRead = data.meta.total_read_articles
+						
+						// refresh meta values
+						this.getMeta()
 						
 					// if error, reset status to previous state
 					}).catch( err => {
-						console.log( err )
+						console.warn( err )
+
 						if( 'read' === attr ) {
 							article.is_read = oldStatus
 						} else if( 'favorite' === attr ) {
@@ -370,6 +365,10 @@
 
 
 			fetchNextPageArticles() {
+				if( !this.states.canFetchNextPage ) {
+					return
+				}
+
 				++this.meta.pages.current
 
 				if( this.meta.pages.total && this.meta.pages.current >= this.meta.pages.total ) {
@@ -380,14 +379,51 @@
 			},
 
 
+			handleSelectTagFilter( tagId ) {
+				if( null === tagId ) {
+					this.states.canFetchNextPage = true
+
+					this.articles.clear()
+					for( const [ key, value ] of this.articlesMain ) {
+						this.articles.set( key, value )
+					}
+					
+					this.articlesMain.clear()
+					
+				} else {
+					this.states.canFetchNextPage	= false
+					this.states.isLoadingArticles 	= true
+	
+					for( const [ key, value ] of this.articles ) {
+						this.articlesMain.set( key, value )
+					}
+	
+					this.articles.clear()
+	
+					WpApi
+						.getArticlesByTag( tagId )
+						.then( data => {
+							data.articles.forEach( article => {
+								this.articles.set( article.id, article )
+							})
+	
+						}).catch( err => {
+							this.setStatusError( err.message )
+	
+						}).finally( () => {
+							this.getMeta()
+							this.states.isLoadingArticles = false
+					})
+				}
+			},			
+
+
 			fetchArticles( skipStorage = false ) {
 				this.states.isLoadingArticles = true
 
 				WpApi
 					.getArticles( this.meta.pages.current, this.meta.pages.perPage )
 					.then( data => {
-						this.meta.articles.totalCount = data.meta.total_articles
-						this.meta.articles.totalRead = data.meta.total_read_articles
 						this.meta.pages.total = data.meta.total_pages
 
 						data.articles.forEach( article => {
@@ -398,10 +434,10 @@
 						if( !skipStorage ) {
 							StorageApi.articles = this.articles
 						}
-
+					}).then( () => {
+						this.getMeta()
 					}).catch( err => {
 						this.setStatusError( err.message )
-					
 					}).finally( () => {
 						this.states.isLoadingArticles = false 
 					})
@@ -439,6 +475,18 @@
 
 
 			/**
+			 * Wrapper for getting meta. We'll always fetch this from the server to ensure we're using the most up-to-date info
+			 */
+			async getMeta() {
+				const { meta } = await WpApi.getMeta()
+
+				this.meta.articles.totalCount 	= meta.total_articles
+				this.meta.articles.totalRead 	= meta.total_articles_read
+				this.meta.articles.totalUnread 	= meta.total_articles_unread
+			},			
+
+
+			/**
 			 * Determine if user is logged in (Auth will handle fetching and validating date from local storage)
 			 */
 			async parseUserStatus() {
@@ -460,6 +508,7 @@
 		created() {
 			this.getArticles()
 			this.getTags()
+			this.getMeta()
 			this.parseUserStatus()
 		},
 

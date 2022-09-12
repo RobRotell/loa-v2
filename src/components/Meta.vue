@@ -3,27 +3,17 @@
 		<div class="filtering">
 
 			<v-select 
-				v-model="filterSelected" 
-				:options="filterOptions"
-				:multiple="true"
-				:close-on-select="false"
-				:clear-on-select="false"
-				:preserve-search="true"	
-				:dropdown-should-open="dropdownShouldOpen"
-				label="name"
-				track-by="name"
-				placeholder="Select tags to filter ..."
+				@option:selected="handleSelectedOption"
+				:options="selectOptions"
+				:searchable="false"
+				v-model="selectedOption" 
+				placeholder="Select tags ..."
 			>
-				<template 
+				<!-- <template 
 					v-slot:caret
 				>
-				</template>
+				</template> -->
 			</v-select>
-
-			<!-- <Filter 
-				:tags="tags"
-			/> -->
-
 		</div>
 
 		<div class="summary">
@@ -46,7 +36,6 @@
 </template>
 
 
-<style src="vue-multiselect/dist/vue-multiselect.css"></style>
 <style lang="scss">
 	.meta {
 		display: flex;
@@ -79,6 +68,44 @@
 
 	.filtering {
 		flex: 1 0;
+	}
+
+	.v-select {
+		--vs-border-width: none;
+		--vs-border-style: none;
+		--vs-border-color: transparent;
+		--vs-border-radius: 0;
+		--vs-search-input-color: #b3b3b3;
+		--vs-selected-color: #b3b3b3;
+		--vs-dropdown-option-padding: 0.75rem 1.5rem;
+		--vs-dropdown-option-color: #b3b3b3;
+		--vs-dropdown-option--active-bg: #6e6995;
+		--vs-dropdown-box-shadow: none;
+		background-color: #f2f2f2;
+		padding-right: remCalc( 32 );
+		// padding-left: remCalc( 50 );
+		// padding-right: remCalc( 50 );
+
+		.vs {
+			&__selected-options {
+				padding: remCalc( 16 ) remCalc( 32 ) !important;
+			}
+
+			&__dropdown-option {
+				@include transitionSimple;
+			}
+
+			&__dropdown-menu {
+				--vs-border-width: 1px;
+				--vs-border-style: solid;
+				--vs-border-color: #f2f2f2;
+			}
+
+			&__clear {
+				display: none;
+				margin-right: remCalc( 32 );
+			}
+		}
 	}
 
 	.multiselect {
@@ -200,7 +227,6 @@
 	export default {
 		name: 'Meta',
 		components: {
-			// Filter,
 			vSelect
 		},		
 
@@ -224,33 +250,37 @@
 
 		data() {
 			return {
-				filterSelected: [],
-				// filterOptions: [],
+				selectedOption: [],
 			}
 		},
 
 
 		methods: {
-			dropdownShouldOpen() {
-				return false
-			}
+			handleSelectedOption( option ) {
+				this.$emit( 'selected_tag_filter', option.value )
+			},
 		},
 
 
 		computed: {
-			filterOptions() {
+			selectOptions() {
 				const options = []
+
+				options.push({
+					value: null,
+					label: 'All articles'
+				})
 
 				this.tags.forEach( tag => {
 					options.push({
-						id: tag.id,
-						name: tag.name,
+						value: tag.id,
+						label: tag.name,
 					})
 				})
 
 				return options
 			},
-		}
+		},
 
 	}
 </script>

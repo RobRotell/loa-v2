@@ -65,7 +65,7 @@ const WpApi = {
 	},
 
 
-	getArticles( page = 1, count = 25 ) {
+	getArticles( page = 1, count = 50 ) {
 		const params = new URLSearchParams()
 
 		params.set( 'page', page )
@@ -75,9 +75,29 @@ const WpApi = {
 	},
 
 
+	getArticlesByTag( tagId, count = 50 ) {
+		const params = new URLSearchParams()
+
+		params.set( 'tag', tagId )
+		params.set( 'count', count )
+
+		return this.fetch( 'articles', params )
+	},	
+
+
 	getTags() {
 		return this.fetch( 'tags' )
-	},	
+	},
+
+
+	/**
+	 * Get meta values (articles read, articles unread, etc)
+	 * 
+	 * @return	{obj}
+	 */
+	getMeta() {
+		return this.fetch( 'meta' )
+	},
 
 
 	/**
