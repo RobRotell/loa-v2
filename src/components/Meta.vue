@@ -53,6 +53,7 @@
 	}
 
 	.summary {
+		display: none;
 		margin-left: remCalc( 24 );
 
 		&__total {
@@ -63,6 +64,12 @@
 			&__count {
 				font-size: remCalc( 18 );
 			}
+		}
+	}
+
+	@media( min-width: 768px ) {
+		.summary {
+			display: block;
 		}
 	}
 
@@ -88,7 +95,7 @@
 
 		.vs {
 			&__selected-options {
-				padding: remCalc( 16 ) remCalc( 32 ) !important;
+				padding: remCalc( 8 ) remCalc( 16 ) !important;
 			}
 
 			&__dropdown-option {

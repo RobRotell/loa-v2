@@ -62,7 +62,7 @@
 	}
 
 	body {
-		font-family: 'Mulish', sans-serif;
+		font-family: 'Figtree', sans-serif;
 		font-weight: $fontReg;
 		font-size: remCalc(16);
 	}
